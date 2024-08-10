@@ -15,40 +15,40 @@ export default function Home() {
     setMessages((messages) => [
       ...messages, 
       {role: "user", content: message}, 
-      {role: "assistant", content: ''},
+      {role: "assistant", content: 'Thinking...'},
     ])
-    const response = fetch('/api/chat', {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify([...messages, {role: "user", content: message}]), 
-    }).then(async (res) => {
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-
-      let result = ''
-      return reader.read().then(function processText({done, value}){
-        if (done){
-          return result
-        }
-        const text = decoder.decode(value || new Int8Array(), {stream:true})
-        setMessages((messages)=> {
-          let lastMessage = messages[messages.length - 1]
-          let otherMessages = messages.slice(0, messages.length - 1)
-          return[
-            ...otherMessages, 
-            {
-              ...lastMessage, 
-              content: lastMessage.content + text, 
-            }, 
-          ]
-        })
-        return reader.read().then(processText)
-      }) 
-    })
+    try {
+      const response = await fetch('/api/chat', {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([...messages, {role: "user", content: message}]), 
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      
+      setMessages((messages) => {
+        let lastMessage = messages[messages.length - 1];
+        let otherMessages = messages.slice(0, messages.length - 1);
+        return [
+          ...otherMessages, 
+          {
+            ...lastMessage, 
+            content: data.content, 
+          }, 
+        ];
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // You might want to show an error message to the user here
+    }
   }
-
+  
   return (
     <Box 
       width="100vw"
