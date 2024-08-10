@@ -1,117 +1,180 @@
 'use client'
-import { useState } from "react";
-import { Box, Button, Stack, TextField } from "@mui/material";
+
+import { Box, Button, Stack, TextField, Typography } from "@mui/material";
+import { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown'
 
 export default function Home() {
-  const [messages, setMessages] = useState([{
-    role: 'assistant', 
-    content: `Hi I'm the Headstarter Support Agent, how can I assist you today?`,
-  }])
+  const [aiMessages, setAiMessages] = useState([{
+    role: `assistant`,
+    content: `Hi I'm the JashAI, a bot for conducting AI-powered software development interviews. How can I assist you today?`,
+  }]);
 
-  const [message, setMessage] = useState('')
+  const [prompt, setPrompt] = useState('');
+  const [resumeFile, setResumeFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [ragPrompt, setRagPrompt] = useState('');
 
-  const sendMessage = async() => {
-    setMessage('')
-    setMessages((messages) => [
-      ...messages, 
-      {role: "user", content: message}, 
-      {role: "assistant", content: ''},
-    ])
-    const response = fetch('/api/chat', {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify([...messages, {role: "user", content: message}]), 
-    }).then(async (res) => {
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
+  useEffect(() => {
+    if (resumeFile) {
+      handleRAGSubmit();
+    }
+  }, [resumeFile]);
 
-      let result = ''
-      return reader.read().then(function processText({done, value}){
-        if (done){
-          return result
-        }
-        const text = decoder.decode(value || new Int8Array(), {stream:true})
-        setMessages((messages)=> {
-          let lastMessage = messages[messages.length - 1]
-          let otherMessages = messages.slice(0, messages.length - 1)
-          return[
-            ...otherMessages, 
-            {
-              ...lastMessage, 
-              content: lastMessage.content + text, 
-            }, 
-          ]
-        })
-        return reader.read().then(processText)
-      }) 
-    })
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setResumeFile(file);
+    }
+  }
+
+  const handleRAGSubmit = async () => {
+    if (!resumeFile) return;
+
+    setIsUploading(true);
+    setAiMessages((prevMessages) => [
+      ...prevMessages,
+      { role: 'user', content: 'Uploaded resume' },
+      { role: 'assistant', content: '' },
+    ]);
+
+    const formData = new FormData();
+    formData.append('document', resumeFile);
+    formData.append('messages', JSON.stringify([...aiMessages, { role: 'user', content: 'Analyze this resume' }]));
+
+    try {
+      const response = await fetch('/api/RAG', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let ragResponse = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value, { stream: true });
+        ragResponse += text;
+        setAiMessages((prevMessages) => {
+          const lastMessage = prevMessages[prevMessages.length - 1];
+          const updatedLastMessage = {
+            ...lastMessage,
+            content: lastMessage.content + text,
+          };
+          return [...prevMessages.slice(0, -1), updatedLastMessage];
+        });
+      }
+
+      setRagPrompt(ragResponse);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setIsUploading(false);
+      setResumeFile(null);
+    }
+  }
+
+  const handleChatSubmit = async () => {
+    if (!prompt) return;
+
+    setIsUploading(true);
+    setAiMessages((prevMessages) => [
+      ...prevMessages,
+      { role: 'user', content: prompt },
+      { role: 'assistant', content: '' },
+    ]);
+
+    const messages = [
+      { role: 'system', content: ragPrompt },
+      ...aiMessages,
+      { role: 'user', content: prompt }
+    ];
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value, { stream: true });
+        setAiMessages((prevMessages) => {
+          const lastMessage = prevMessages[prevMessages.length - 1];
+          const updatedLastMessage = {
+            ...lastMessage,
+            content: lastMessage.content + text,
+          };
+          return [...prevMessages.slice(0, -1), updatedLastMessage];
+        });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setAiMessages((prevMessages) => [
+        ...prevMessages,
+        { role: 'assistant', content: 'Sorry, there was an error processing your request.' },
+      ]);
+    } finally {
+      setIsUploading(false);
+      setPrompt('');
+    }
   }
 
   return (
-    <Box 
-      width="100vw"
-      height="100vh"
-      display='flex'
-      flexDirection="column"
-      justifyContent="center"
-      alignItems="center"
-      >
-        <Stack
-          direction="column"
-          width="600px"
-          height="700px"
-          border="1px solid black"
-          p={2}
-          spacing={3}
-        >
-          <Stack 
-            direction="column"
-            spacing={2}
-            flexGrow={1}
-            overflow="auto"
-            maxHeight="100%"
-            >
-              {
-                messages.map((message,index) => (
-                  <Box 
-                    key={index}
-                    display="flex"
-                    justifyContent={
-                      message.role === 'assistant' ? "flex-start" : "flex-end"
-                    }
-                  >
-                    <Box
-                      bgcolor={
-                        message.role === 'assistant'
-                        ? 'primary.main'
-                        : 'secondary.main'
-                      }
-                      color="white"
-                      borderRadius={16}
-                      p={3}
-                    >
-                      <ReactMarkdown >
-                        {message.content}
-                      </ReactMarkdown>
-                    </Box>
-                  </Box>
-                ))
-              }
-            </Stack>
-            <Stack direction="row" spacing={2} >
-              <TextField
-                label = "message"
-                fullWidth
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-              <Button variant= "contained" onClick={sendMessage}> Send </Button>
-              
-            </Stack>
-        </Stack>
+    <Box width="100vw" height="100vh" display="flex" flexDirection="column" alignItems="center" justifyContent="top">
+      <Typography variant="h2">AI Chatbot for Interviewing</Typography>
+      <Typography>Please upload your resume or enter your questions in the prompt box below:</Typography>
+      
+      <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+        <Typography variant="h6">Resume:</Typography>
+        <TextField 
+          variant="standard" 
+          type="file" 
+          inputProps={{accept:"application/pdf"}} 
+          onChange={handleFileChange}
+          disabled={isUploading}
+        />
+      </Stack>
+
+      <Stack display="flex" flexDirection="column" height="700px" width="600px">
+        <Stack direction="column" spacing={2} flexGrow={1} overflow="auto" maxHeight="100%" width="600px" border="1px solid #000">
+          {aiMessages.map((message, index) => (
+            <Box key={index} display="flex" justifyContent={message.role === "assistant" ? "flex-start" : "flex-end"} p={1}>
+              <Box maxWidth="80%" bgcolor={message.role === "assistant" ? "#ededed" : "green"} color={message.role === "assistant" ? "#black" : "white"} borderRadius={5} p={1} paddingLeft={message.role === "assistant" ? 4 : 1}>
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </Box>
+            </Box>
+          ))}
+        </Stack>        
+      </Stack>
+
+      <Stack direction="row" width="600px" p={3} spacing={2}>
+        <TextField 
+          variant="outlined"  
+          fullWidth 
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          disabled={isUploading}
+        />
+        <Button variant="contained" onClick={handleChatSubmit} disabled={isUploading}>
+          {isUploading ? 'Processing...' : 'Submit'}
+        </Button>
+      </Stack>
     </Box>
-  )
+  );
 }
