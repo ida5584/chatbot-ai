@@ -65,21 +65,19 @@ export default function Home() {
       { role: 'assistant', content: '' },
     ]);
 
-    const messages = [
-      ...aiMessages,
-      { role: 'user', content: prompt }
-    ];
-
     const formData = new FormData();
     formData.append('document', fileContent);
-    formData.append('messages', JSON.stringify({ messages }));
+    formData.append('messages', JSON.stringify( [
+      ...aiMessages,
+      { role: 'user', content: prompt }
+    ]));
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        // headers: {
+        //   'Content-Type': 'application/json',
+        // },
         body: formData,
       });
 

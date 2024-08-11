@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI();
-
 const systemPrompt= `You are an AI customer support assistant for JashAI, a platform that conducts AI-powered software development interviews for Software Engineering jobs. Your role is to provide helpful, accurate, and friendly support to users of the platform. Here are your key characteristics and guidelines:
 1. Knowledge: You have comprehensive knowledge about JashAI's features, interview process, technical requirements, pricing, and common issues users might face.
 Tone: Maintain a professional yet approachable tone. Be patient and understanding, especially when dealing with technical issues or frustrated users.
@@ -21,25 +19,29 @@ Remember, your primary goal is to ensure users have a smooth, informative, and p
 
 export async function POST(req) {
     try {
+        const openai = new OpenAI();
         const data = await req.formData();
         
         const document = data.get('document');
         const messages = JSON.parse(data.get('messages'));
 
+
         if (!messages || !Array.isArray(messages)) {
             return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 });
         }
 
-        const enhancedSystemPrompt =systemPrompt +"\n\nPlease use these user details to assist them with their training: "+ document
+        // Adding user uploaded doc to system prompt to help context
+        const enhancedSystemPrompt =systemPrompt +"Please use these user details to assist them with their training: "+ document
+        // console.log(enhancedSystemPrompt)
 
         const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             stream: true,
-            messages: {
+            messages: [{
                 role: "system",
                 content: enhancedSystemPrompt,
             },
-            ...messages,
+            ...messages,]
         });
 
         const stream = new ReadableStream({
