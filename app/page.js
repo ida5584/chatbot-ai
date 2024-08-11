@@ -4,6 +4,9 @@ import { Box, Button, Stack, TextField, Typography } from "@mui/material";
 import { useState, useEffect } from "react";
 import ReactMarkdown from 'react-markdown'
 
+import pdfToText from 'react-pdftotext'
+
+
 export default function Home() {
   const [aiMessages, setAiMessages] = useState([{
     role: `assistant`,
@@ -13,7 +16,9 @@ export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [resumeFile, setResumeFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [ragPrompt, setRagPrompt] = useState('');
+  // const [ragPrompt, setRagPrompt] = useState('');
+
+  const [fileContent, setFileContent] = useState("");
 
   useEffect(() => {
     if (resumeFile) {
@@ -29,6 +34,7 @@ export default function Home() {
   }
 
   const handleRAGSubmit = async () => {
+    // Parses to into text
     if (!resumeFile) return;
 
     setIsUploading(true);
@@ -38,43 +44,15 @@ export default function Home() {
       { role: 'assistant', content: '' },
     ]);
 
-    const formData = new FormData();
-    formData.append('document', resumeFile);
-    formData.append('messages', JSON.stringify([...aiMessages, { role: 'user', content: 'Analyze this resume' }]));
+    await pdfToText(resumeFile)
+    .then(text => {
+      console.log("File as text:", text)
+      setFileContent(text)
+    })
+    .catch(error => console.error("Failed to extract text from pdf"))
 
-    try {
-      const response = await fetch('/api/RAG', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let ragResponse = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const text = decoder.decode(value, { stream: true });
-        ragResponse += text;
-        setAiMessages((prevMessages) => {
-          const lastMessage = prevMessages[prevMessages.length - 1];
-          const updatedLastMessage = {
-            ...lastMessage,
-            content: lastMessage.content + text,
-          };
-          return [...prevMessages.slice(0, -1), updatedLastMessage];
-        });
-      }
-
-      setRagPrompt(ragResponse);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setIsUploading(false);
-      setResumeFile(null);
-    }
+    setIsUploading(false);
+    setResumeFile(null);
   }
 
   const handleChatSubmit = async () => {
@@ -88,10 +66,13 @@ export default function Home() {
     ]);
 
     const messages = [
-      { role: 'system', content: ragPrompt },
       ...aiMessages,
       { role: 'user', content: prompt }
     ];
+
+    const formData = new FormData();
+    formData.append('document', fileContent);
+    formData.append('messages', JSON.stringify({ messages }));
 
     try {
       const response = await fetch('/api/chat', {
@@ -99,7 +80,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ messages }),
+        body: formData,
       });
 
       if (!response.ok) {
