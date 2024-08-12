@@ -10,7 +10,7 @@ import pdfToText from 'react-pdftotext'
 export default function Home() {
   const [aiMessages, setAiMessages] = useState([{
     role: `assistant`,
-    content: `Hi I'm the JashAI, a bot for conducting AI-powered software development interviews. How can I assist you today?`,
+    content: `Hi I'm the InterviewAI, a bot for conducting AI-powered software development interviews. How can I assist you today?`,
   }]);
 
   const [prompt, setPrompt] = useState('');
@@ -116,7 +116,7 @@ export default function Home() {
 
   return (
     <Box width="100vw" height="100vh" display="flex" flexDirection="column" alignItems="center" justifyContent="top">
-      <Typography variant="h2">AI Chatbot for Interviewing</Typography>
+      <Typography variant="h2">Interview AI for SWE</Typography>
       <Typography>Please upload your resume or enter your questions in the prompt box below:</Typography>
       
       <Stack direction="row" spacing={2} alignItems="center" mb={2}>
@@ -130,8 +130,8 @@ export default function Home() {
         />
       </Stack>
 
-      <Stack display="flex" flexDirection="column" height="700px" width="600px">
-        <Stack direction="column" spacing={2} flexGrow={1} overflow="auto" maxHeight="100%" width="600px" border="1px solid #000">
+      <Stack display="flex" flexDirection="column" maxHeight="700px" maxWidth="600px">
+        <Stack direction="column" spacing={2} flexGrow={1} overflow="auto" maxHeight="100%" maxWidth="590px" border="1px solid #000">
           {aiMessages.map((message, index) => (
             <Box key={index} display="flex" justifyContent={message.role === "assistant" ? "flex-start" : "flex-end"} p={1}>
               <Box maxWidth="80%" bgcolor={message.role === "assistant" ? "#ededed" : "green"} color={message.role === "assistant" ? "#black" : "white"} borderRadius={5} p={1} paddingLeft={message.role === "assistant" ? 4 : 1}>
