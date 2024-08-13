@@ -10,7 +10,7 @@ Project dedicated to learning integrations with AI models and using Node.JS, Ope
 - Keeps history as long as page isnt refreshed
 - Screen is fixed size so that the scroll will only happen within the chat window
 - The output will be in markdown, does have issues with code blocks with long lines since they dont wrap
-- Uses the gpt-4o-mini Open AI model - (Currently Cheapest)
+- ~~Uses the gpt-4o-mini Open AI model - (Currently Cheapest)~~ Switched to [Gemma 2 9B since it is free found here](https://openrouter.ai/models/google/gemma-2-9b-it:free/api)
 
 ## Images for reference
 ![alt text](./Images/AI_chatbot.png)

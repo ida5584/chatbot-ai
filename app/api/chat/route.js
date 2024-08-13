@@ -1,3 +1,4 @@
+require('dotenv').config();
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
@@ -19,7 +20,9 @@ Remember, your primary goal is to ensure users have a smooth, informative, and p
 
 export async function POST(req) {
     try {
-        const openai = new OpenAI();
+        const openai = new OpenAI({
+            baseURL: "https://openrouter.ai/api/v1",
+            apiKey: process.env.OPENROUTER_API_KEY});
         const data = await req.formData();
         
         const document = data.get('document');
@@ -35,7 +38,7 @@ export async function POST(req) {
         // console.log(enhancedSystemPrompt)
 
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model:  "google/gemma-2-9b-it:free",//"gpt-4o-mini",
             stream: true,
             messages: [{
                 role: "system",
@@ -43,6 +46,7 @@ export async function POST(req) {
             },
             ...messages,]
         });
+        // console.log(completion)
 
         const stream = new ReadableStream({
             async start(controller) {
@@ -65,7 +69,27 @@ export async function POST(req) {
         
         return new NextResponse(stream);
     } catch (error) {
+        if (error.response) {
+            // If there was an error with the API request
+            console.log('Error status:', error.response.status);
+            console.log('Error headers:', error.response.headers);
+
+            // Check for specific token limit headers if they exist
+            if (error.response.headers['x-ratelimit-limit-tokens']) {
+                console.log('Token Limit:', error.response.headers['x-ratelimit-limit-tokens']);
+            }
+            if (error.response.headers['x-ratelimit-remaining-tokens']) {
+                console.log('Remaining Tokens:', error.response.headers['x-ratelimit-remaining-tokens']);
+            }
+            if (error.response.headers['x-ratelimit-reset-tokens']) {
+                console.log('Token Limit Reset Time:', error.response.headers['x-ratelimit-reset-tokens']);
+            }
+        } else {
+            console.log('Error:', error.message);
+        }
+
         console.error('Error in chat route:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ error: error}, { status: error.status},)
+        // return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

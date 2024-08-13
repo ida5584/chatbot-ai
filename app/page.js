@@ -80,6 +80,7 @@ export default function Home() {
         // },
         body: formData,
       });
+      console.log('x-ratelimit-reset-tokens: ',response.headers['x-ratelimit-remaining-tokens'])
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -103,6 +104,7 @@ export default function Home() {
         });
       }
     } catch (error) {
+      console.error('Error headers:', error['headers'])
       console.error('Error:', error);
       setAiMessages((prevMessages) => [
         ...prevMessages,
