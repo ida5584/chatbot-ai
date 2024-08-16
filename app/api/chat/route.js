@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const systemPrompt = `You are the customer support chatbot for HeadstarterAI, a platform offering AI-powered interviews for software engineering jobs. Assist users by:
-                        1) Helping with account setup and management,
-                        2) Guiding interview preparation and interpreting feedback,
-                        3) Providing technical support and troubleshooting,
-                        4) Offering coding assistance and resources,
-                        5) Managing billing and subscriptions, and
-                        6) Answering general inquiries about the platform.
-                        Ensure responses are clear, concise, and supportive.`
+const systemPrompt = `You are a culinary assistant chatbot. Provide a recipe based on given ingredients, skill level, and cuisine type. Ensure the response includes a JSON object with the following structure:
+                        {
+                        "recipeName": "Recipe Name",
+                        "ingredients": "Ingredients list",
+                        "instructions": "Step-by-step instructions",
+                        "cookingTips": "Cooking tips"
+                        }
+                        Format the response as a valid JSON string.`
 
 export async function POST(req){
     const openai = new OpenAI()

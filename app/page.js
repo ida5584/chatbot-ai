@@ -1,51 +1,47 @@
 'use client'
 import { useState } from "react";
-import { Box, Button, Stack, TextField } from "@mui/material";
+import { Box, Button, Stack, Typography } from "@mui/material";
+import ReactMarkdown from 'react-markdown';
 
 export default function Home() {
-  const [messages, setMessages] = useState([{
-    role: 'assistant', 
-    content: `Hi I'm the Headstarter Support Agent, how can I assist you today?`,
-  }])
+  const ingredients = 'chicken, rice, broccoli';
+  const skillLevel = 'beginner';
+  const cuisine = 'asian';
+  
+  const [recipeName, setRecipeName] = useState('')
+  const [recipeIngredients, setRecipeIngredients] = useState('')
+  const [instructions, setInstructions] = useState('')
+  const [cookingTips, setCookingTips] = useState('')
 
-  const [message, setMessage] = useState('')
-
-  const sendMessage = async() => {
-    setMessage('')
-    setMessages((messages) => [
-      ...messages, 
-      {role: "user", content: message}, 
-      {role: "assistant", content: ''},
-    ])
-    const response = fetch('/api/chat', {
+  const fetchRecipe = async() => {
+    const response = await fetch('/api/chat', {
       method: "POST",
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify([...messages, {role: "user", content: message}]), 
-    }).then(async (res) => {
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
+      body: JSON.stringify([{role: "user", content: `Ingredients: ${ingredients}, Skill level: ${skillLevel}, Cuisine: ${cuisine}`}]), 
+    })
 
-      let result = ''
-      return reader.read().then(function processText({done, value}){
-        if (done){
-          return result
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+
+    let result = ''
+    await reader.read().then(function processText({done, value}){
+      if (done){
+        try {
+          const responseData = JSON.parse(result);
+          setRecipeName(responseData.recipeName)
+          setRecipeIngredients(responseData.ingredients.join('\n'))
+          setInstructions(responseData.instructions.join('\n'))
+          setCookingTips(responseData.cookingTips.join('\n'))
+        } catch (error) {
+          console.error('Error parsing JSON:', error)
         }
-        const text = decoder.decode(value || new Int8Array(), {stream:true})
-        setMessages((messages)=> {
-          let lastMessage = messages[messages.length - 1]
-          let otherMessages = messages.slice(0, messages.length - 1)
-          return[
-            ...otherMessages, 
-            {
-              ...lastMessage, 
-              content: lastMessage.content + text, 
-            }, 
-          ]
-        })
-        return reader.read().then(processText)
-      }) 
+        return result
+      }
+      const text = decoder.decode(value || new Int8Array(), {stream:true})
+      result += text
+      return reader.read().then(processText)
     })
   }
 
@@ -57,58 +53,38 @@ export default function Home() {
       flexDirection="column"
       justifyContent="center"
       alignItems="center"
+    >
+      <Stack
+        direction="column"
+        width="600px"
+        border="1px solid black"
+        p={2}
+        spacing={3}
       >
-        <Stack
-          direction="column"
-          width="600px"
-          height="700px"
-          border="1px solid black"
-          p={2}
-          spacing={3}
-        >
-          <Stack 
-            direction="column"
-            spacing={2}
-            flexGrow={1}
-            overflow="auto"
-            maxHeight="100%"
-            >
-              {
-                messages.map((message,index) => (
-                  <Box 
-                    key={index}
-                    display="flex"
-                    justifyContent={
-                      message.role === 'assistant' ? "flex-start" : "flex-end"
-                    }
-                  >
-                    <Box
-                      bgcolor={
-                        message.role === 'assistant'
-                        ? 'primary.main'
-                        : 'secondary.main'
-                      }
-                      color="white"
-                      borderRadius={16}
-                      p={3}
-                    >
-                      {message.content}
-                    </Box>
-                  </Box>
-                ))
-              }
-            </Stack>
-            <Stack direction="row" spacing={2} >
-              <TextField
-                label = "message"
-                fullWidth
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-              <Button variant= "contained" onClick={sendMessage}> Send </Button>
-              
-            </Stack>
-        </Stack>
+        <Typography variant="h4" component="div" gutterBottom>
+          Recipe Generator
+        </Typography>
+        <Button variant="contained" onClick={fetchRecipe}>Get Recipe</Button>
+        {recipeName && (
+          <Box mt={3}>
+            <Typography variant="h5" component="div" gutterBottom>
+              {recipeName}
+            </Typography>
+            <Typography variant="h6" component="div" gutterBottom>
+              Ingredients
+            </Typography>
+            <ReactMarkdown>{recipeIngredients}</ReactMarkdown>
+            <Typography variant="h6" component="div" gutterBottom>
+              Instructions
+            </Typography>
+            <ReactMarkdown>{instructions}</ReactMarkdown>
+            <Typography variant="h6" component="div" gutterBottom>
+              Cooking Tips
+            </Typography>
+            <ReactMarkdown>{cookingTips}</ReactMarkdown>
+          </Box>
+        )}
+      </Stack>
     </Box>
   )
 }
